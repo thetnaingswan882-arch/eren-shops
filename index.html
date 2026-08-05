@@ -464,11 +464,49 @@ checkGame();
     }
 
 
+    fetch("http://10.93.175.180:5000/order", {
+
+    method:"POST",
+
+    headers:{
+        "Content-Type":"application/json"
+    },
+
+    body:JSON.stringify({
+
+        game: game,
+
+        package: pack,
+
+        game_id: id,
+
+        server_id: server,
+
+        payment: "KPay"
+
+    })
+
+})
+
+
+.then(response => response.text())
+
+.then(data => {
+
     alert(
         "✅ Order Received\n\n"+
         "Game: "+game+
         "\nPackage: "+pack
     );
+
+})
+
+
+.catch(error => {
+
+    alert("❌ Order ပို့မရပါ");
+
+});
 
             }
 
