@@ -473,39 +473,26 @@ checkGame();
     },
 
     body:JSON.stringify({
-
         game: game,
-
         package: pack,
-
         game_id: id,
-
         server_id: server,
-
         payment: "KPay"
-
     })
 
 })
-
-
-.then(response => response.text())
-
-.then(data => {
-
-    alert(
-        "✅ Order Received\n\n"+
-        "Game: "+game+
-        "\nPackage: "+pack
-    );
-
+.then(response => {
+    console.log("STATUS:", response.status);
+    return response.text();
 })
+.then(data => {
+    console.log("SERVER:", data);
 
-
+    alert("Order ပို့ပြီးပါပြီ");
+})
 .catch(error => {
-
-    alert("❌ Order ပို့မရပါ");
-
+    console.log(error);
+    alert("Error: " + error);
 });
 
             }
