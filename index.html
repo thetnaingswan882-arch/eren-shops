@@ -270,7 +270,7 @@ accept="image/*">
     
             
 
-<button>
+<button onclick="submitOrder()">
     ✅ Order တင်မယ်
 </button>
 
@@ -423,6 +423,54 @@ gameSelect.addEventListener("change",checkGame);
 
 
 checkGame();
+
+    function submitOrder(){
+
+    let game = gameSelect.value;
+    let pack = packageSelect.value;
+
+    let id = gameID.value;
+    let server = serverID.value;
+    let tg = tgUsername.value;
+
+
+    if(game === "Mobile Legends"){
+
+        if(id === "" || server === ""){
+            alert("❌ Game ID နဲ့ Server ID ထည့်ပေးပါ");
+            return;
+        }
+
+    }
+
+
+    else if(game === "PUBG Mobile"){
+
+        if(id === ""){
+            alert("❌ PUBG ID ထည့်ပေးပါ");
+            return;
+        }
+
+    }
+
+
+    else if(game === "Telegram Premium"){
+
+        if(tg === ""){
+            alert("❌ Telegram Username ထည့်ပေးပါ");
+            return;
+        }
+
+    }
+
+
+    alert(
+        "✅ Order Received\n\n"+
+        "Game: "+game+
+        "\nPackage: "+pack
+    );
+
+            }
 
 
 </script>
