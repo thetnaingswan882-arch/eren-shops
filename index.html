@@ -464,36 +464,8 @@ checkGame();
     }
 
 
-    fetch("http://127.0.0.1:5000/order", {
-
-    method:"POST",
-
-    headers:{
-        "Content-Type":"application/json"
-    },
-
-    body:JSON.stringify({
-        game: game,
-        package: pack,
-        game_id: id,
-        server_id: server,
-        payment: "KPay"
-    })
-
-})
-.then(response => {
-    console.log("STATUS:", response.status);
-    return response.text();
-})
-.then(data => {
-    console.log("SERVER:", data);
-
-    alert("Order ပို့ပြီးပါပြီ");
-})
-.catch(error => {
-    console.log(error);
-    alert("Error: " + error);
-});
+    window.location.href =
+"https://t.me/ErenisNot4U_bot?start=order";
 
             }
 
