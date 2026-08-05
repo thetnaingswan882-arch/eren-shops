@@ -1,22 +1,5 @@
-from flask import Flask, request
-from telegram import Bot
-import asyncio
 
 
-TOKEN = "8855623212:AAEebOYgET6faQjfih-DMnbPp0efxMvpVKc"
-
-GROUP_ID = -1004454866672
-
-
-app = Flask(__name__)
-
-bot = Bot(token=TOKEN)
-
-
-
-HTML = """
-<!DOCTYPE html>
-<html>
 <head>
 
 <meta charset="UTF-8">
@@ -27,113 +10,459 @@ HTML = """
 <style>
 
 body{
-background:#0f172a;
-color:white;
-font-family:Arial;
-padding:20px;
+    margin:0;
+    background:linear-gradient(135deg,#0f172a,#111827,#000);
+    color:white;
+    font-family:Arial,sans-serif;
+    padding:20px;
 }
 
-.box{
-max-width:400px;
-margin:auto;
-background:#1e293b;
-padding:20px;
-border-radius:20px;
+.container{
+    max-width:420px;
+    margin:auto;
 }
 
-input,select,button{
-
-width:100%;
-padding:12px;
-margin-top:10px;
-border-radius:10px;
-box-sizing:border-box;
-
+.header{
+    background:#111827;
+    padding:25px;
+    border-radius:20px;
+    text-align:center;
+    box-shadow:0 0 20px rgba(0,229,255,.4);
 }
 
-input,select{
-background:#0f172a;
-color:white;
-border:1px solid #334155;
-}
-
-button{
-
-background:#00e5ff;
-border:none;
-font-size:18px;
-font-weight:bold;
-
+.logo{
+    width:90px;
+    height:90px;
+    margin:auto;
+    background:#00e5ff;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:45px;
 }
 
 h1{
-text-align:center;
-color:#00e5ff;
+    color:#00e5ff;
+    margin:15px 0 8px;
+}
+
+.subtitle{
+    color:#cbd5e1;
+}
+
+.card{
+    background:#1e293b;
+    margin-top:20px;
+    padding:20px;
+    border-radius:20px;
+    box-shadow:0 0 10px rgba(0,0,0,.4);
+}
+
+.package{
+    background:#334155;
+    padding:15px;
+    margin-top:12px;
+    border-radius:15px;
+    border:1px solid #475569;
+}
+
+.price{
+    color:#22c55e;
+    font-size:20px;
+    font-weight:bold;
+}
+
+label{
+    display:block;
+    margin-top:15px;
+    font-weight:bold;
+}
+
+input,
+select{
+    width:100%;
+    padding:13px;
+    margin-top:8px;
+    border-radius:10px;
+    border:1px solid #475569;
+    background:#0f172a;
+    color:white;
+    font-size:16px;
+    box-sizing:border-box;
+}
+
+button{
+    width:100%;
+    margin-top:20px;
+    padding:15px;
+    border-radius:15px;
+    border:none;
+    background:#00e5ff;
+    color:#000;
+    font-size:18px;
+    font-weight:bold;
+}
+
+.telegram{
+    display:block;
+    text-align:center;
+    margin-top:15px;
+    padding:12px;
+    background:#229ED9;
+    color:white;
+    text-decoration:none;
+    border-radius:12px;
+}
+
+.footer{
+    text-align:center;
+    margin-top:20px;
+    color:#777;
 }
 
 </style>
 
 </head>
-
-
 <body>
 
+<div class="container">
 
-<div class="box">
+    <div class="header">
 
-<h1>🎮 Eren's Shop</h1>
+        <div class="logo">
+            🎮
+        </div>
 
+        <h1>Eren's Shop</h1>
 
-<h2>🛒 Order တင်ရန်</h2>
+        <p class="subtitle">
+            💎 ML Diamond | 🎮 PUBG UC | ⭐ Telegram Premium
+        </p>
 
-
-<select id="game">
-
-<option>Mobile Legends</option>
-<option>PUBG Mobile</option>
-<option>Telegram Premium</option>
-
-</select>
-
-
-<select id="package">
-
-<option>86 Diamond - 4,500 Ks</option>
-<option>172 Diamond - 9,000 Ks</option>
-<option>257 Diamond - 19,000 Ks</option>
-
-</select>
+    </div>
 
 
-<input id="game_id" placeholder="Game ID">
+    <div class="card">
+
+        <h2 id="titleGame">💎 ML Diamond</h2>
+
+        <div class="package">
+            86 Diamond
+            <br>
+            <span class="price">4,500 Ks</span>
+        </div>
+
+        <div class="package">
+            172 Diamond
+            <br>
+            <span class="price">9,000 Ks</span>
+        </div>
+
+        <div class="package">
+            257 Diamond
+            <br>
+            <span class="price">19,000 Ks</span>
+        </div>
+
+        <div class="package">
+            Weekly Pass
+            <br>
+            <span class="price">6,000 Ks</span>
+        </div>
+
+    </div>
 
 
-<input id="server_id" placeholder="Server ID">
+    <div class="card">
+
+        <h2>🛒 Order တင်ရန်</h2>
 
 
-<select id="payment">
+        <label>Game</label>
 
-<option>KPay</option>
-<option>KBZ Pay</option>
+        <select id="game">
 
-</select>
+            <option>Mobile Legends</option>
+            <option>PUBG Mobile</option>
+            <option>Telegram Premium</option>
+
+        </select>
 
 
-<button onclick="sendOrder()">
-✅ Order တင်မယ်
+        <label>Package</label>
+
+        <select id="package">
+
+        </select>
+
+
+        <label id="gameLabel">
+            Game ID
+        </label>
+
+
+        <input 
+        id="gameID"
+        placeholder="🎮 Game ID ထည့်ပါ">
+
+
+        <label id="serverLabel">
+            Server ID
+        </label>
+
+
+        <input 
+        id="serverID"
+        placeholder="🌎 Server ID ထည့်ပါ">
+
+
+        <p id="tgText" style="display:none;color:#00e5ff;">
+            ⭐ Telegram Premium ဝယ်ရန် Username ထည့်ပေးပါ
+        </p>
+
+
+        <label id="tgLabel" style="display:none;">
+            Telegram Username
+        </label>
+
+
+        <input 
+        id="tgUsername"
+        placeholder="📱 @username ထည့်ပါ"
+        style="display:none;">
+
+
+        <label>
+            Payment
+        </label>
+
+
+        <select>
+
+            <option>💰 KPay</option>
+            
+        
+           <option>💰 KBZ Pay</option>
+
+        </select>
+
+        <div class="card">
+
+<h3>💳 Payment Information</h3>
+
+<p>
+💰 KPay<br>
+📱 09766605879<br>
+👤 Thet Naing Swan ✅
+</p>
+
+        </div>
+
+        <label>
+📸 Payment Screenshot
+</label>
+
+<input 
+type="file"
+id="paymentSS"
+accept="image/*">
+    
+            
+
+<button onclick="submitOrder()">
+    ✅ Order တင်မယ်
 </button>
 
 
 </div>
 
 
+<a class="telegram" href="https://t.me/erenIsNot4U">
+    📩 Telegram Contact
+</a>
+
+
+<div class="footer">
+
+    
+🔥 Fast & Secure Top Up ✅
+<br><br>
+
+© Power By Eren's Shop ✅
+
+
+</div>
+
 
 <script>
 
-function sendOrder(){
+const gameSelect = document.getElementById("game");
+const packageSelect = document.getElementById("package");
+
+const gameLabel = document.getElementById("gameLabel");
+const gameID = document.getElementById("gameID");
+
+const serverLabel = document.getElementById("serverLabel");
+const serverID = document.getElementById("serverID");
+
+const tgText = document.getElementById("tgText");
+const tgLabel = document.getElementById("tgLabel");
+const tgUsername = document.getElementById("tgUsername");
 
 
-fetch("/order",{
+const packages = {
+
+"Mobile Legends":[
+["86 Diamond","4,500 Ks"],
+["172 Diamond","9,000 Ks"],
+["257 Diamond","19,000 Ks"],
+["Weekly Pass","6,000 Ks"]
+],
+
+"PUBG Mobile":[
+["60 UC","3,000 Ks"],
+["325 UC","14,500 Ks"],
+["660 UC","28,000 Ks"],
+["1800 UC","72,000 Ks"]
+],
+
+"Telegram Premium":[
+["1 Month","18,000 Ks"],
+["3 Months","50,000 Ks"],
+["12 Months","180,000 Ks"]
+]
+
+};
+
+
+
+function updatePackages(){
+
+    packageSelect.innerHTML="";
+
+    packages[gameSelect.value].forEach(item=>{
+
+        let option=document.createElement("option");
+
+        option.value = item[0];
+
+        option.textContent =
+        item[0]+" - "+item[1];
+
+        packageSelect.appendChild(option);
+
+    });
+
+}
+
+
+
+function checkGame(){
+
+    updatePackages();
+
+    let game = gameSelect.value;
+
+
+    if(game==="Mobile Legends"){
+
+        gameLabel.style.display="block";
+        gameID.style.display="block";
+
+        serverLabel.style.display="block";
+        serverID.style.display="block";
+
+        tgText.style.display="none";
+        tgLabel.style.display="none";
+        tgUsername.style.display="none";
+
+    }
+
+
+    else if(game==="PUBG Mobile"){
+
+        gameLabel.style.display="block";
+        gameID.style.display="block";
+
+        serverLabel.style.display="none";
+        serverID.style.display="none";
+
+        tgText.style.display="none";
+        tgLabel.style.display="none";
+        tgUsername.style.display="none";
+
+    }
+
+
+    else{
+
+
+        gameLabel.style.display="none";
+        gameID.style.display="none";
+
+        serverLabel.style.display="none";
+        serverID.style.display="none";
+
+        tgText.style.display="block";
+        tgLabel.style.display="block";
+        tgUsername.style.display="block";
+
+    }
+
+}
+
+
+
+gameSelect.addEventListener("change",checkGame);
+
+
+
+function submitOrder(){
+
+let game = gameSelect.value;
+let pack = packageSelect.value;
+
+let id = gameID.value;
+let server = serverID.value;
+let tg = tgUsername.value;
+
+
+
+if(game==="Mobile Legends"){
+
+    if(id==="" || server===""){
+        alert("❌ Game ID နဲ့ Server ID ထည့်ပါ");
+        return;
+    }
+
+}
+
+
+
+if(game==="PUBG Mobile"){
+
+    if(id===""){
+        alert("❌ PUBG ID ထည့်ပါ");
+        return;
+    }
+
+}
+
+
+
+if(game==="Telegram Premium"){
+
+    if(tg===""){
+        alert("❌ Telegram Username ထည့်ပါ");
+        return;
+    }
+
+}
+
+
+
+fetch("http://10.93.175.180:5000/order",{
 
 method:"POST",
 
@@ -144,98 +473,50 @@ headers:{
 
 body:JSON.stringify({
 
-game:document.getElementById("game").value,
+game:game,
 
-package:document.getElementById("package").value,
+package:pack,
 
-game_id:document.getElementById("game_id").value,
+game_id:id,
 
-server_id:document.getElementById("server_id").value,
+server_id:server,
 
-payment:document.getElementById("payment").value
+telegram_username:tg,
 
-})
-
-})
-
-
-.then(()=>{
-
-alert("✅ Order တင်ပြီးပါပြီ")
+payment:"KPay"
 
 })
 
 
-.catch(()=>{
+})
 
-alert("❌ Order Error")
+
+.then(response=>response.text())
+
+
+.then(data=>{
+
+console.log(data);
+
+alert("✅ Order ပို့ပြီးပါပြီ");
 
 })
+
+
+.catch(error=>{
+
+console.log(error);
+
+alert("❌ Order ပို့မရပါ");
+
+});
 
 
 }
 
 
-</script>
+
+checkGame();
 
 
-</body>
-</html>
-"""
-
-
-
-@app.route("/")
-def home():
-
-    return HTML
-
-
-
-@app.route("/order", methods=["POST"])
-def order():
-
-    data = request.json
-
-
-    text = f"""
-🛒 New Order
-
-🎮 Game:
-{data.get('game')}
-
-📦 Package:
-{data.get('package')}
-
-🆔 Game ID:
-{data.get('game_id')}
-
-🌎 Server ID:
-{data.get('server_id')}
-
-💳 Payment:
-{data.get('payment')}
-"""
-
-
-    asyncio.run(
-        bot.send_message(
-            chat_id=GROUP_ID,
-            text=text
-        )
-    )
-
-
-    return "OK"
-
-
-
-if __name__ == "__main__":
-
-    print("🌐 Eren Shop Website Running...")
-
-
-    app.run(
-        host="0.0.0.0",
-        port=5000
-    )
+    </script>
