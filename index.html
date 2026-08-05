@@ -464,9 +464,37 @@ checkGame();
     }
 
 
-    window.location.href =
-"https://t.me/ErenisNot4U_bot?start=order";
+    fetch("/order", {
 
+    method:"POST",
+
+    headers:{
+        "Content-Type":"application/json"
+    },
+
+    body:JSON.stringify({
+
+        game: game,
+        package: pack,
+        game_id: id,
+        server_id: server,
+        telegram_username: tg,
+        payment: "KPay"
+
+    })
+
+})
+.then(res => res.text())
+.then(data => {
+
+    alert("✅ Order တင်ပြီးပါပြီ");
+
+})
+.catch(err => {
+
+    alert("❌ Order Error");
+
+});
             }
 
 
