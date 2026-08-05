@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+buttonYPE html>
 <html lang="my">
 
 <head>
@@ -257,7 +257,7 @@ button{
 </div>
 
 
-<a class="telegram" href="t.me/erenIsNot4U">
+<a class="telegram" href="https://t.me/erenIsNot4U">
     📩 Telegram Contact
 </a>
 
@@ -278,6 +278,7 @@ button{
 <script>
 
 const gameSelect = document.getElementById("game");
+const packageSelect = document.getElementById("package");
 
 const gameLabel = document.getElementById("gameLabel");
 const gameID = document.getElementById("gameID");
@@ -290,61 +291,118 @@ const tgLabel = document.getElementById("tgLabel");
 const tgUsername = document.getElementById("tgUsername");
 
 
+const packages = {
+
+"Mobile Legends":[
+["86 Diamond","4,500 Ks"],
+["172 Diamond","9,000 Ks"],
+["257 Diamond","19,000 Ks"],
+["Weekly Pass","6,000 Ks"]
+],
+
+"PUBG Mobile":[
+["60 UC","3,000 Ks"],
+["325 UC","14,500 Ks"],
+["660 UC","28,000 Ks"],
+["1800 UC","72,000 Ks"]
+],
+
+"Telegram Premium":[
+["1 Month","18,000 Ks"],
+["3 Months","50,000 Ks"],
+["12 Months","180,000 Ks"]
+]
+
+};
+
+
+
+function updatePackages(){
+
+    packageSelect.innerHTML="";
+
+    packages[gameSelect.value].forEach(item=>{
+
+        let option=document.createElement("option");
+
+        option.textContent =
+        item[0] + " - " + item[1];
+
+        packageSelect.appendChild(option);
+
+    });
+
+}
+
+
+
 function checkGame(){
 
     let game = gameSelect.value;
 
 
+    updatePackages();
+
+
     if(game === "PUBG Mobile"){
 
-        gameLabel.style.display = "block";
-        gameID.style.display = "block";
+        gameLabel.style.display="block";
+        gameID.style.display="block";
 
-        serverLabel.style.display = "none";
-        serverID.style.display = "none";
+        serverLabel.style.display="none";
+        serverID.style.display="none";
 
-        tgText.style.display = "none";
-        tgLabel.style.display = "none";
-        tgUsername.style.display = "none";
+        tgText.style.display="none";
+        tgLabel.style.display="none";
+        tgUsername.style.display="none";
 
     }
 
 
     else if(game === "Telegram Premium"){
 
-        gameLabel.style.display = "none";
-        gameID.style.display = "none";
 
-        serverLabel.style.display = "none";
-        serverID.style.display = "none";
+        gameLabel.style.display="none";
+        gameID.style.display="none";
 
-        tgText.style.display = "block";
-        tgLabel.style.display = "block";
-        tgUsername.style.display = "block";
+        serverLabel.style.display="none";
+        serverID.style.display="none";
+
+
+        tgText.style.display="block";
+        tgLabel.style.display="block";
+        tgUsername.style.display="block";
+
 
     }
 
 
     else{
 
-        gameLabel.style.display = "block";
-        gameID.style.display = "block";
 
-        serverLabel.style.display = "block";
-        serverID.style.display = "block";
+        gameLabel.style.display="block";
+        gameID.style.display="block";
 
-        tgText.style.display = "none";
-        tgLabel.style.display = "none";
-        tgUsername.style.display = "none";
+
+        serverLabel.style.display="block";
+        serverID.style.display="block";
+
+
+        tgText.style.display="none";
+        tgLabel.style.display="none";
+        tgUsername.style.display="none";
+
 
     }
 
 }
 
 
-gameSelect.addEventListener("change", checkGame);
+
+gameSelect.addEventListener("change",checkGame);
 
 
+checkGame();
 
 
 </script>
