@@ -1,4 +1,4 @@
-from flask import render_template
+time flask import render_template
 from flask import (
     Flask,
     request,
@@ -21,7 +21,73 @@ import json
 import threading
 import time
 
+import hashlib
+import hmac
+import time
 
+# ==================================================
+# FLASHTOPUP API CONFIG
+# ==================================================
+FLASH_API_ID = "RSL5YP4YFXLEGL8X"
+FLASH_API_KEY = "4aadba4402eceffa0e6f777a8b09c7709c74c5c7556c9cc7e72e8740639e2f6e"
+FLASH_BASE_URL = "https://api.flashtopup.com/api/reseller/v2"
+
+def get_flash_signature(path, timestamp, nonce, body_str):
+    """Generate HMAC-SHA256 signature for FlashTopup API."""
+    message = f"{path}\n{timestamp}\n{nonce}\n{body_str}"
+    signature = hmac.new(
+        FLASH_API_KEY.encode('utf-8'),
+        message.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    return signature
+
+def flash_topup(game_id, server_id, package_amount, game_type):
+    """
+    FlashTopup API ကို ခေါ်ပြီး Auto Top-Up လုပ်မယ်
+    game_type: "ML" သို့ "PUBG" သို့ "HOK"
+    """
+    try:
+        path = "/topup"
+        timestamp = str(int(time.time()))
+        nonce = str(int(time.time() * 1000))
+        
+        payload = {
+            "api_id": FLASH_API_ID,
+            "game": game_type,
+            "game_id": game_id,
+            "server_id": server_id,
+            "amount": package_amount
+        }
+        body_str = json.dumps(payload)
+        
+        signature = get_flash_signature(path, timestamp, nonce, body_str)
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-FT-API-ID": FLASH_API_ID,
+            "X-FT-Timestamp": timestamp,
+            "X-FT-Nonce": nonce,
+            "X-FT-Signature": signature
+        }
+        
+        url = f"{FLASH_BASE_URL}{path}"
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success":
+                return {"success": True, "message": "Top-up အောင်မြင်ပါပြီ"}
+            else:
+                return {"success": False, "error": data.get("message", "Unknown error")}
+        else:
+            return {"success": False, "error": f"API Error: {response.status_code}"}
+            
+    except requests.exceptions.Timeout:
+        return {"success": False, "error": "API request timed out"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+        
 # ==================================================
 # APP
 # ==================================================
