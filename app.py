@@ -2591,5 +2591,5 @@ def telegram_callback():
 # WSGI APPLICATION (PythonAnywhere)
 # ==================================================
 
-application = app
+app = app
 
