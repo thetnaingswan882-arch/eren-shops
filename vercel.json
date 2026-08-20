@@ -1,0 +1,15 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "flask_app_fixed_3_7_fixed.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "flask_app_fixed_3_7_fixed.py"
+        }
+    ]
+}
