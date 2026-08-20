@@ -2591,5 +2591,8 @@ def telegram_callback():
 # WSGI APPLICATION (PythonAnywhere)
 # ==================================================
 
-app = app
+application = app
 
+# ✅ Railway အတွက် Port သတ်မှတ်ခြင်း (ဒါကို အောက်ဆုံးမှာ ထည့်ပါ)
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8080)
