@@ -1490,9 +1490,8 @@ def packages(game):
 </html>
 """
 
-
 # ==================================================
-# PLACE ORDER (Auto API + Manual Support - BRL Clean)
+# PLACE ORDER (Auto API + Manual Support)
 # ==================================================
 
 @app.route("/place_order", methods=["GET", "POST"])
@@ -1574,9 +1573,26 @@ def place_order():
                         message_type = "error"
                     else:
                         # ==========================================
+                        # ✅ FLASHTOPUP AUTO API SUPPORT (ML, PUBG, HOK)
+                        # ==========================================
+                        if game in ("ML", "PUBG", "HOK"):
+                            # API ကို ခေါ်ပြီး Top-up လုပ်မယ်
+                            result = flash_topup(game_id, server_id, package_price, game)
+                            if result["success"]:
+                                cursor.execute("INSERT INTO orders (username, game, package, status, created_at) VALUES (?, ?, ?, ?, ?)",
+                                               (username, game, package, "Completed", now()))
+                                order_id = cursor.lastrowid
+                                conn.commit()
+                                message = f"✅ {game} Top-up အောင်မြင်ပါပြီ။"
+                                message_type = "success"
+                            else:
+                                message = f"❌ Top-up မအောင်မြင်ပါ။\nError: {result['error']}"
+                                message_type = "error"
+
+                        # ==========================================
                         # ✅ SMILE ONE AUTO API SUPPORT
                         # ==========================================
-                        if game == "Smile One Coin PHP":
+                        elif game == "Smile One Coin PHP":
                             # API ကနေ PHP Coin Top-up လုပ်မယ် (Email လိုအပ်တယ်)
                             result = get_smile_one_code(package_price, "PHP", email=acc_mail)
                             if result["success"]:
@@ -1605,7 +1621,7 @@ def place_order():
                                 message_type = "error"
 
                         # ==========================================
-                        # ✅ OTHER GAMES / MANUAL ORDERS
+                        # ✅ OTHER GAMES / MANUAL ORDERS (TG Pre)
                         # ==========================================
                         else:
                             cursor.execute("INSERT INTO orders (username, game, package, game_id, server_id, telegram_username, acc_mail, payment, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
