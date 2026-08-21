@@ -1760,6 +1760,37 @@ def place_order():
 </html>
 """
 
+# ==========================================
+# ✅ FLASHTOPUP AUTO API SUPPORT (ML, PUBG, HOK)
+# ==========================================
+elif game in ("ML", "PUBG", "HOK"):
+    # API ကို ခေါ်ပြီး Top-up လုပ်မယ်
+    result = flash_topup(game_id, server_id, package_price, game)
+    if result["success"]:
+        cursor.execute("INSERT INTO orders (username, game, package, status, created_at) VALUES (?, ?, ?, ?, ?)",
+                       (username, game, package, "Completed", now()))
+        order_id = cursor.lastrowid
+        conn.commit()
+        message = f"✅ {game} Top-up အောင်မြင်ပါပြီ။"
+        message_type = "success"
+    else:
+        message = f"❌ Top-up မအောင်မြင်ပါ။\nError: {result['error']}"
+        message_type = "error"
+
+# ==========================================
+# ✅ SMILE ONE AUTO API SUPPORT (PHP, BRL)
+# ==========================================
+elif game == "Smile One Coin PHP":
+    # ... (အရင်က ရှိတဲ့ Code ကို ဆက်ထားပါ) ...
+elif game == "Smile One Code BRL":
+    # ... (အရင်က ရှိတဲ့ Code ကို ဆက်ထားပါ) ...
+
+# ==========================================
+# ✅ OTHER GAMES / MANUAL ORDERS (TG Pre)
+# ==========================================
+else:
+    # ... (အရင်က ရှိတဲ့ Manual အတိုင်း ဆက်ထားပါ) ...
+    
 # ==================================================
 # ORDER HISTORY (With Game ID & Server ID)
 # ==================================================
