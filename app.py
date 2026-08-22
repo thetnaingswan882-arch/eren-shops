@@ -1,4 +1,4 @@
-time flask import render_template
+from flask import render_template
 from flask import (
     Flask,
     request,
@@ -20,74 +20,11 @@ import requests
 import json
 import threading
 import time
-
-import hashlib
 import hmac
-import time
+import hashlib
+import uuid
 
-# ==================================================
-# FLASHTOPUP API CONFIG
-# ==================================================
-FLASH_API_ID = "RSL5YP4YFXLEGL8X"
-FLASH_API_KEY = "4aadba4402eceffa0e6f777a8b09c7709c74c5c7556c9cc7e72e8740639e2f6e"
-FLASH_BASE_URL = "https://api.flashtopup.com/api/reseller/v2"
 
-def get_flash_signature(path, timestamp, nonce, body_str):
-    """Generate HMAC-SHA256 signature for FlashTopup API."""
-    message = f"{path}\n{timestamp}\n{nonce}\n{body_str}"
-    signature = hmac.new(
-        FLASH_API_KEY.encode('utf-8'),
-        message.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-    return signature
-
-def flash_topup(game_id, server_id, package_amount, game_type):
-    """
-    FlashTopup API ကို ခေါ်ပြီး Auto Top-Up လုပ်မယ်
-    game_type: "ML" သို့ "PUBG" သို့ "HOK"
-    """
-    try:
-        path = "/topup"
-        timestamp = str(int(time.time()))
-        nonce = str(int(time.time() * 1000))
-        
-        payload = {
-            "api_id": FLASH_API_ID,
-            "game": game_type,
-            "game_id": game_id,
-            "server_id": server_id,
-            "amount": package_amount
-        }
-        body_str = json.dumps(payload)
-        
-        signature = get_flash_signature(path, timestamp, nonce, body_str)
-        
-        headers = {
-            "Content-Type": "application/json",
-            "X-FT-API-ID": FLASH_API_ID,
-            "X-FT-Timestamp": timestamp,
-            "X-FT-Nonce": nonce,
-            "X-FT-Signature": signature
-        }
-        
-        url = f"{FLASH_BASE_URL}{path}"
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == "success":
-                return {"success": True, "message": "Top-up အောင်မြင်ပါပြီ"}
-            else:
-                return {"success": False, "error": data.get("message", "Unknown error")}
-        else:
-            return {"success": False, "error": f"API Error: {response.status_code}"}
-            
-    except requests.exceptions.Timeout:
-        return {"success": False, "error": "API request timed out"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-        
 # ==================================================
 # APP
 # ==================================================
@@ -97,15 +34,16 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "CHANGE_THIS_TO_RANDOM_SECRET_KEY")
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
-import requests
-import json
+# ==================================================
+# SMILE ONE API Config
+# ==================================================
 
-# Smile One API Config
+# IMPORTANT: keep credentials in Railway Variables, never in GitHub.
 SMILE_ONE_API_URL = "https://jcplays.com/smilecoin/api"
 SMILE_ONE_UID = "70275119-162c-435b-8836-5971e82fc0fd"
 SMILE_ONE_API_KEY = "9099bf7aa361fd26295ba42a30402be778922f76bdc3ad31a0cc8333118104d2"
 
-# ✅ ပြင်ပြီးသား Function (email=None ထည့်ပြီးသား)
+
 def get_smile_one_code(amount, product_type, email=None):
     """
     Smile One API ကို ခေါ်ပြီး Code ထုတ်ယူတဲ့ Function
@@ -148,6 +86,74 @@ def get_smile_one_code(amount, product_type, email=None):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+# ==================================================
+# FLASH TOPUP RESELLER API Config
+# ==================================================
+
+FT_API_ID = "RSL5YP4YFXLEGL8X"
+FT_API_KEY = "4aadba4402eceffa0e6f777a8b09c7709c74c5c7556c9cc7e72e8740639e2f6e"
+FT_BASE_URL = "https://api.flashtopup.com/api/reseller/v2"
+FT_TIMEOUT = 20
+FT_AUTO_RECHARGE = True
+
+
+def flash_topup_enabled():
+    return bool(FT_API_ID and FT_API_KEY and FT_BASE_URL and FT_AUTO_RECHARGE)
+
+
+def _flash_signature(path, timestamp, nonce, body_bytes):
+    body_hash = hashlib.sha256(body_bytes).hexdigest()
+    signing_string = f"{path}{timestamp}{nonce}{body_hash}"
+    return hmac.new(
+        FT_API_KEY.encode("utf-8"),
+        signing_string.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _flash_headers(path, body_bytes):
+    timestamp = str(int(time.time()))
+    nonce = uuid.uuid4().hex
+    return {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-FT-API-ID": FT_API_ID,
+        "X-FT-TIMESTAMP": timestamp,
+        "X-FT-NONCE": nonce,
+        "X-FT-SIGNATURE": _flash_signature(path, timestamp, nonce, body_bytes),
+}
+
+# ==================================================
+# FLASH TOPUP ORDER FUNCTIONS
+# ==================================================
+
+def flash_place_order(game, package, game_id, server_id, local_order_id):
+    if not flash_topup_enabled():
+        return {"success": False, "enabled": False, "error": "FlashTopup API is not configured/enabled."}
+
+    service_code = f"TOPUP_{game}_{package.split(' - ', 1)[0].strip().replace('💎', '').replace('UC', '')}"
+
+    payload = {
+        "service_code": service_code,
+        "reference_id": f"EREN-{local_order_id}-{uuid.uuid4().hex[:8]}",
+        "quantity": 1,
+        "user_id": str(game_id),
+    }
+    if game == "ML" and server_id:
+        payload["server_id"] = str(server_id)
+
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    headers = _flash_headers("/order", body)
+    url = f"{FT_BASE_URL}/order"
+
+    try:
+        response = requests.post(url, data=body, headers=headers, timeout=FT_TIMEOUT)
+        data = response.json()
+        if response.status_code == 200 and data.get("success"):
+            return {"success": True, "provider_order_id": str(data.get("data", {}).get("order_id", ""))}
+        return {"success": False, "error": data.get("message", str(data))}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # ==================================================
 # SETTINGS
@@ -158,14 +164,15 @@ DB_FILE = os.environ.get("DB_FILE", "/home/erenyeager250/mysite/website.db")
 os.makedirs(os.path.dirname(DB_FILE) or ".", exist_ok=True)
 
 # Telegram Bot Settings
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8996593086:AAGll9JC9IJlTvPcgadRvj9URInBY8USlqw")
-GROUP_ID = int(os.environ.get("GROUP_ID", "-1003987776013"))
-OWNER_CHAT_ID = int(os.environ.get("OWNER_CHAT_ID", "5698123475"))
+BOT_TOKEN = "8996593086:AAGll9JC9IJlTvPcgadRvj9URInBY8USlqw"
+GROUP_ID = -1003987776013
+OWNER_CHAT_ID = 5698123475
 ADMIN_USERNAME = "Eren"
 
 # Email Settings
-EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS", "erenshops7@gmail.com")
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "umuezngvtzvbrmch")
+EMAIL_ADDRESS = "erenshops7@gmail.com"
+EMAIL_PASSWORD = "umuezngvtzvbrmch"
+
 
 # ==================================================
 # DATABASE
@@ -229,6 +236,17 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+
+    # Safe migrations for FlashTopup auto-recharge fields.
+    for column_sql in [
+        "ALTER TABLE orders ADD COLUMN provider_order_id TEXT",
+        "ALTER TABLE orders ADD COLUMN provider_status TEXT",
+        "ALTER TABLE orders ADD COLUMN wallet_charged INTEGER DEFAULT 0",
+    ]:
+        try:
+            conn.execute(column_sql)
+        except sqlite3.OperationalError:
+            pass
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS deposit_requests (
@@ -402,13 +420,20 @@ def send_telegram_message(text):
         return False
 
 def send_telegram_message_with_buttons(text, reply_markup=None):
-    if not BOT_TOKEN: return False
+    """Send an order/deposit message to the configured Telegram group."""
+    if not BOT_TOKEN or not GROUP_ID:
+        print("Telegram config missing: BOT_TOKEN/GROUP_ID")
+        return False
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         data = {"chat_id": GROUP_ID, "text": text, "parse_mode": "HTML"}
-        if reply_markup: data["reply_markup"] = reply_markup
+        if reply_markup:
+            data["reply_markup"] = reply_markup
         response = requests.post(url, data=data, timeout=20)
-        return response.status_code == 200
+        if response.status_code != 200:
+            print("Telegram sendMessage failed:", response.status_code, response.text[:1000])
+            return False
+        return bool(response.json().get("ok"))
     except Exception as e:
         print("Telegram Error:", e)
         return False
@@ -447,7 +472,7 @@ def send_message_to_user(username, text):
         print(f"Error sending message to {username}: {e}")
         return False
 
-        # ==================================================
+# ==================================================
 # HOME
 # ==================================================
 
@@ -488,7 +513,6 @@ def register():
                 error = "⚠️ ဒီ Username ရှိပြီးသားပါ"
     return f"""<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Register</title>{STYLE}</head><body><div class="box"><h1>👤 Create Account</h1><form method="POST"><input name="username" placeholder="👤 Username" required><input type="email" name="email" placeholder="📧 Gmail" required><input type="password" name="password" placeholder="🔒 Password" required><input type="password" name="confirm" placeholder="🔒 Confirm Password" required><button class="green" type="submit">✅ Register</button></form><p class="error">{error}</p><p>Account ရှိပြီးသားလား? <a href="/login">Login</a></p></div></body></html>"""
 
-
 # ==================================================
 # LOGIN
 # ==================================================
@@ -515,7 +539,8 @@ def login():
         error = "❌ Username သို့မဟုတ် Password မှားနေပါတယ်"
     return f"""<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login</title>{STYLE}</head><body><div class="box"><h1>🔐 Login</h1><form method="POST"><input name="username" placeholder="👤 Username" required><input type="password" name="password" placeholder="🔒 Password" required><button type="submit">🔐 Login</button></form><p class="error">{error}</p><p>Account မရှိသေးပါသလား? <a href="/register">Register</a></p><p><a href="/forgot-password">🔑 Forgot Password?</a></p></div></body></html>"""
 
-    # ==================================================
+
+# ==================================================
 # FORGOT PASSWORD
 # ==================================================
 
@@ -594,7 +619,7 @@ def reset_password(token):
             return """<div class="box"><h1>✅ Password Changed!</h1><p>သင့် Password ကို အောင်မြင်စွာ ပြောင်းလိုက်ပါပြီ။</p><a href="/login"><button>🔐 Login</button></a></div>"""
     return f"""<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset Password</title>{STYLE}</head><body><div class="box"><h1>🔑 Reset Password</h1><form method="POST"><input type="password" name="password" placeholder="🔒 New Password" required><input type="password" name="confirm" placeholder="🔒 Confirm Password" required><button type="submit">✅ Reset Password</button></form><p class="error">{message}</p></div></body></html>"""
 
-    # ==================================================
+# ==================================================
 # SHOP (Dashboard - Auto System Separated)
 # ==================================================
 
@@ -1351,6 +1376,8 @@ def order():
 </body>
 </html>
 """
+
+
 # ==================================================
 # PACKAGES (Turbo Style - With Back Button)
 # ==================================================
@@ -1573,27 +1600,9 @@ def place_order():
                         message_type = "error"
                     else:
                         # ==========================================
-                        # ✅ FLASHTOPUP AUTO API SUPPORT (ML, PUBG, HOK)
-                        # ==========================================
-                        if game in ("ML", "PUBG", "HOK"):
-                            # API ကို ခေါ်ပြီး Top-up လုပ်မယ်
-                            result = flash_topup(game_id, server_id, package_price, game)
-                            if result["success"]:
-                                cursor.execute("INSERT INTO orders (username, game, package, status, created_at) VALUES (?, ?, ?, ?, ?)",
-                                               (username, game, package, "Completed", now()))
-                                order_id = cursor.lastrowid
-                                conn.commit()
-                                message = f"✅ {game} Top-up အောင်မြင်ပါပြီ။"
-                                message_type = "success"
-                            else:
-                                message = f"❌ Top-up မအောင်မြင်ပါ။\nError: {result['error']}"
-                                message_type = "error"
-
-                        # ==========================================
                         # ✅ SMILE ONE AUTO API SUPPORT
                         # ==========================================
-                        elif game == "Smile One Coin PHP":
-                            # API ကနေ PHP Coin Top-up လုပ်မယ် (Email လိုအပ်တယ်)
+                        if game == "Smile One Coin PHP":
                             result = get_smile_one_code(package_price, "PHP", email=acc_mail)
                             if result["success"]:
                                 cursor.execute("INSERT INTO orders (username, game, package, status, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -1607,7 +1616,6 @@ def place_order():
                                 message_type = "error"
 
                         elif game == "Smile One Code BRL":
-                            # ✅ API ကနေ BRL Code ထုတ်မယ် (ဘာမှမထည့်ရတော့ဘူး)
                             result = get_smile_one_code(package_price, "BRL")
                             if result["success"]:
                                 cursor.execute("INSERT INTO orders (username, game, package, status, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -1621,7 +1629,28 @@ def place_order():
                                 message_type = "error"
 
                         # ==========================================
-                        # ✅ OTHER GAMES / MANUAL ORDERS (TG Pre)
+                        # ML / PUBG AUTO RECHARGE
+                        # ==========================================
+                        elif game in {"ML", "PUBG"} and flash_topup_enabled():
+                            cursor.execute("INSERT INTO orders (username, game, package, game_id, server_id, telegram_username, acc_mail, payment, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                           (username, game, package, game_id, server_id, telegram_username, acc_mail, payment, "Pending", now()))
+                            order_id = cursor.lastrowid
+                            conn.commit()
+                            conn.close()
+                            conn = None
+
+                            result = flash_place_order(game, package, game_id, server_id, order_id)
+                            if result.get("success"):
+                                cursor = conn.cursor()
+                                cursor.execute("UPDATE orders SET status='Completed' WHERE id=?", (order_id,))
+                                conn.commit()
+                                message = f"✅ Order #{order_id} အောင်မြင်ပြီး Auto Recharge ပြီးပါပြီ။"
+                            else:
+                                message = f"❌ Auto Recharge မအောင်မြင်ပါ။\n{result.get('error', 'Unknown error')}"
+                                message_type = "error"
+
+                        # ==========================================
+                        # OTHER GAMES / MANUAL ORDERS
                         # ==========================================
                         else:
                             cursor.execute("INSERT INTO orders (username, game, package, game_id, server_id, telegram_username, acc_mail, payment, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1669,14 +1698,12 @@ def place_order():
     <title>Place Order</title>
     {STYLE}
     <style>
-        /* နောက်ခံ wallpaper ပျောက်အောင် ပြင်ထားသော Style */
         body {{
             background: #0f172a; /* Solid Dark Background */
             background-image: none !important;
             padding-bottom: 80px;
         }}
 
-        /* Header with Back Button */
         .header {{
             background: #0d1117;
             padding: 15px;
@@ -1730,7 +1757,6 @@ def place_order():
     </style>
 </head>
 <body>
-    <!-- Header with Back Button -->
     <div class="header">
         <a href="javascript:history.back()" class="back-btn">← Back</a>
         <h1>🛒 Place Order</h1>
@@ -1776,38 +1802,7 @@ def place_order():
 </html>
 """
 
-# ==========================================
-# ✅ FLASHTOPUP AUTO API SUPPORT (ML, PUBG, HOK)
-# ==========================================
-elif game in ("ML", "PUBG", "HOK"):
-    # API ကို ခေါ်ပြီး Top-up လုပ်မယ်
-    result = flash_topup(game_id, server_id, package_price, game)
-    if result["success"]:
-        cursor.execute("INSERT INTO orders (username, game, package, status, created_at) VALUES (?, ?, ?, ?, ?)",
-                       (username, game, package, "Completed", now()))
-        order_id = cursor.lastrowid
-        conn.commit()
-        message = f"✅ {game} Top-up အောင်မြင်ပါပြီ။"
-        message_type = "success"
-    else:
-        message = f"❌ Top-up မအောင်မြင်ပါ။\nError: {result['error']}"
-        message_type = "error"
-
-# ==========================================
-# ✅ SMILE ONE AUTO API SUPPORT (PHP, BRL)
-# ==========================================
-elif game == "Smile One Coin PHP":
-    # ... (အရင်က ရှိတဲ့ Code ကို ဆက်ထားပါ) ...
-elif game == "Smile One Code BRL":
-    # ... (အရင်က ရှိတဲ့ Code ကို ဆက်ထားပါ) ...
-
-# ==========================================
-# ✅ OTHER GAMES / MANUAL ORDERS (TG Pre)
-# ==========================================
-else:
-    # ... (အရင်က ရှိတဲ့ Manual အတိုင်း ဆက်ထားပါ) ...
-    
-# ==================================================
+    # ==================================================
 # ORDER HISTORY (With Game ID & Server ID)
 # ==================================================
 
@@ -2089,6 +2084,7 @@ def orders():
 </html>
 """
 
+
 # ==================================================
 # PROFILE - Menu Bar 4 Items
 # ==================================================
@@ -2296,7 +2292,7 @@ def profile():
 </html>
 """
 
-# ==================================================
+   # ==================================================
 # SET LANGUAGE & THEME
 # ==================================================
 
@@ -2481,7 +2477,6 @@ def privacy_page():
         return "Privacy Policy page not found.", 404
 
 
-
 def add_user_notification(username, notification_type, title, message):
     """Create a bell notification for a website user."""
     try:
@@ -2525,28 +2520,6 @@ def edit_telegram_button_message(chat_id, message_id, text):
         print("Telegram edit error:", e)
         return False
 
-# ✅ Helper: Get readable amount text from package string
-def get_order_amount_text(package_str):
-    # Split and extract the diamond part (e.g. "22 💎 - 2,100 Ks" -> "22 💎")
-    parts = package_str.split(" - ")
-    if parts:
-        return parts[0].strip()
-    return package_str
-
-# ✅ Helper: Add notification to database
-def add_user_notification(username, note_type, title, message):
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO notifications (username, type, title, message, is_read, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (username, note_type, title, message, 0, now()))
-        conn.commit()
-        conn.close()
-        print(f"✅ Notification added for {username}: {title}")
-    except Exception as e:
-        print(f"❌ Failed to add notification for {username}: {e}")
 
 def confirm_deposit_from_telegram(deposit_id, chat_id, message_id):
     conn = get_db(); cursor = conn.cursor()
@@ -2599,11 +2572,23 @@ def confirm_order_from_telegram(order_id, chat_id, message_id):
         "500 Tokens - 8,000 Ks": 8000, "1000 Tokens - 15,000 Ks": 15000,
     }
     price = package_price_map.get(order[3], 0)
+
+    if order[2] in {"ML", "PUBG"} and flash_topup_enabled():
+        conn.close()
+        result = flash_place_order(order[2], order[3], order[4], order[5], order_id)
+        if result.get("success"):
+            conn = get_db(); cursor = conn.cursor()
+            cursor.execute("UPDATE orders SET status='Completed' WHERE id=?", (order_id,))
+            conn.commit(); conn.close()
+            edit_telegram_button_message(chat_id, message_id, f"🟢 Order #{order_id} Auto Recharge {result.get('status','Completed')}\n👤 User: {order[1]}\n🎮 Product: {order[2]}\n📦 {order[3]}")
+        else:
+            edit_telegram_button_message(chat_id, message_id, f"❌ Order #{order_id} Auto Recharge Failed\n{result.get('error','Unknown error')}")
+        return
+
     cursor.execute("UPDATE orders SET status='Confirmed' WHERE id=?", (order_id,))
     cursor.execute("UPDATE users SET balance = balance - ? WHERE username = ?", (price, order[1]))
     cursor.execute("INSERT INTO wallet_transactions (username, type, amount, description, created_at) VALUES (?, ?, ?, ?, ?)", (order[1], "PURCHASE", price, f"Order #{order_id} Confirmed via Telegram: {order[2]} - {order[3]}", now()))
 
-    # 🔔 Website Bell Notification
     order_amount_text = get_order_amount_text(order[3])
     add_user_notification(
         order[1],
@@ -2705,7 +2690,3 @@ def telegram_callback():
 # ==================================================
 
 application = app
-
-# ✅ Railway အတွက် Port သတ်မှတ်ခြင်း (ဒါကို အောက်ဆုံးမှာ ထည့်ပါ)
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8080)
